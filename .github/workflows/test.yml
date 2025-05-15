@@ -1,0 +1,196 @@
+---
+name: 'Acceptance Tests'
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  standup-cluster:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os:
+          - ['almalinux', '8', 'x86_64']                           
+          - ['almalinux', '9', 'x86_64']                           
+          - ['debian', '11', 'x86_64']                             
+          - ['debian', '12', 'x86_64']                             
+          # debian 13 is not released yet, but we can get dailies..
+          - ['debian', '13', 'x86_64', 'daily-latest']             
+          - ['rocky', '8', 'x86_64']                               
+          - ['rocky', '9', 'x86_64']                               
+          - ['ubuntu', '22.04', 'x86_64']                          
+          - ['ubuntu', '24.04', 'x86_64']
+    steps:
+      - uses: actions/checkout@v4
+      - id: local-action
+        uses: ./
+        with:
+          os: ${{ matrix.os[0] }}
+          os-version: ${{ matrix.os[1] }}
+          os-arch: ${{ matrix.os[2] }}
+          image_version: ${{ matrix.os[3] }}
+          debug: true
+          vms: |-
+            [
+              {
+                "role": "runner",
+                "cpus": 2,
+                "mem_mb": 2048,
+                "cpu_mode": "host-model"
+              },
+              {
+                "role": "testee",
+                "cpu_mode": "host-model"
+              }
+            ]
+
+  install-openvox-collection:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os:
+          - ['rocky', '9', 'x86_64']
+          - ['ubuntu', '2404', 'amd64']
+    steps:
+      - uses: actions/checkout@v4
+      - id: local-action
+        uses: ./
+        with:
+          os: ${{ matrix.os[0] }}
+          os-version: ${{ matrix.os[1] }}
+          os-arch: ${{ matrix.os[2] }}
+          setup-cluster-root-ssh: true
+          debug: true
+          install-openvox: true
+          openvox-collection: 'openvox7'
+          vms: |-
+            [
+              {
+                "role": "agent",
+                "cpus": 2,
+                "mem_mb": 2048,
+                "cpu_mode": "host-model"
+              }
+            ]
+      - name: Verify openvox-agent is installed
+        working-directory: kvm_automation_tooling
+        env:
+          # Suppress warnings about Bolt gem versus package use.
+          BOLT_GEM: true
+        shell: bash
+        run: |-
+          set +e
+          set +o pipefail
+          res=$(bundle exec bolt command run \
+                  '/opt/puppetlabs/bin/puppet --version' \
+                  --inventory terraform/instances/inventory.test.yaml \
+                  --targets test-agent-1 \
+                  --format json)
+          echo "${res}"
+          echo "${res}" | jq .
+          ver=$(echo "$res" | jq ."items"[0].value.stdout)
+          echo "ver: ${ver}"
+          set -ex
+          [[ "${ver}" =~ \"7\. ]]
+  install-openvox-version:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os:
+          - ['rocky', '9', 'x86_64']
+          - ['ubuntu', '2404', 'amd64']
+    steps:
+      - uses: actions/checkout@v4
+      - id: local-action
+        uses: ./ # Use kvm_automation_tooling's own standup-cluster action.yaml...
+        with:
+          os: ${{ matrix.os[0] }}
+          os-version: ${{ matrix.os[1] }}
+          os-arch: ${{ matrix.os[2] }}
+          setup-cluster-root-ssh: true
+          debug: true
+          install-openvox: true
+          openvox-version: '8.13.0'
+          vms: |-
+            [
+              {
+                "role": "agent",
+                "cpus": 2,
+                "mem_mb": 2048,
+                "cpu_mode": "host-model"
+              }
+            ]
+      - name: Verify openvox-agent is installed
+        working-directory: kvm_automation_tooling
+        env:
+          # Suppress warnings about Bolt gem versus package use.
+          BOLT_GEM: true
+        shell: bash
+        run: |-
+          set +e
+          set +o pipefail
+          res=$(bundle exec bolt command run \
+                  '/opt/puppetlabs/bin/puppet --version' \
+                  --inventory terraform/instances/inventory.test.yaml \
+                  --targets test-agent-1 \
+                  --format json)
+          echo "${res}"
+          echo "${res}" | jq .
+          ver=$(echo "$res" | jq ."items"[0].value.stdout)
+          echo "ver: ${ver}"
+          set -ex
+          [[ "${ver}" =~ \"8\.13\.0 ]]
+  install-openvox-pre-release:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os:
+          - ['rocky', '9', 'x86_64']
+          - ['ubuntu', '2404', 'amd64']
+    steps:
+      - uses: actions/checkout@v4
+      - id: local-action
+        uses: ./ # Use kvm_automation_tooling's own standup-cluster action.yaml...
+        with:
+          os: ${{ matrix.os[0] }}
+          os-version: ${{ matrix.os[1] }}
+          os-arch: ${{ matrix.os[2] }}
+          setup-cluster-root-ssh: true
+          debug: true
+          install-openvox: true
+          openvox-released: false
+          openvox-version: '8.13.0'
+          vms: |-
+            [
+              {
+                "role": "agent",
+                "cpus": 2,
+                "mem_mb": 2048,
+                "cpu_mode": "host-model"
+              }
+            ]
+      - name: Verify openvox-agent is installed
+        working-directory: kvm_automation_tooling
+        env:
+          # Suppress warnings about Bolt gem versus package use.
+          BOLT_GEM: true
+        shell: bash
+        run: |-
+          set +e
+          set +o pipefail
+          res=$(bundle exec bolt command run \
+                  '/opt/puppetlabs/bin/puppet --version' \
+                  --inventory terraform/instances/inventory.test.yaml \
+                  --targets test-agent-1 \
+                  --format json)
+          echo "${res}"
+          echo "${res}" | jq .
+          ver=$(echo "$res" | jq ."items"[0].value.stdout)
+          echo "ver: ${ver}"
+          set -ex
+          [[ "${ver}" =~ \"8\.13\.0 ]]
