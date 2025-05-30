@@ -10,9 +10,38 @@ The Bolt module [kvm_automation_tooling] is used to provision the VMs.
 
 Ubuntu 24.04
 
+## Supported VM Platforms
+
+The action can created nested vms for any OS supported by
+[kvm_automation_tooling] which currently (1.0.0) includes:
+
+* Almalinux 9, 8
+* Debian 13, 12, 11, 10
+* Rocky 9, 8
+* Ubuntu 24.04, 22.04
+
 ## Usage
 
-TODO
+Minimally, you must specify 'os', 'os-version' and 'os-arch'
+parameters.
+
+```yaml
+- uses: jpartlow/nested_vms@v1
+  with:
+    # The default operating system to us for the VMs in the cluster.
+    os: almalinux
+
+    # The version of the operating system.
+    os-version: 9
+
+    # The architecture of the operating system.
+    os-arch: x86_64
+```
+
+By default this will generate a single nested VM with a hostname
+'test-agent-1' that can be reached via SSH on the runner using the key
+"${HOME}/.ssh/ssh-id-test.pub" (where $HOME is the home directory of
+the runner user on the gha runner vm).
 
 ## License
 
