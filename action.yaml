@@ -105,6 +105,10 @@ outputs:
     description: "VM information for the cluster (ip and hostname)."
     value: ${{ steps.inventory-details.outputs.inventory_json }}
 
+env:
+  # Suppress warnings about Bolt gem versus package use.
+  BOLT_GEM: true
+
 runs:
   using: "composite"
   steps:
@@ -203,9 +207,6 @@ runs:
     - name: Collect inventory details
       id: inventory-details
       shell: bash
-      env:
-        # Suppress warnings about Bolt gem versus package use.
-        BOLT_GEM: true
       working-directory: kvm_automation_tooling
       run: |-
         bundle exec bolt inventory show --inventory terraform/instances/inventory.test.yaml --format json --detail | tee inventory.json
