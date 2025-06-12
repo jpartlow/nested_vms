@@ -200,7 +200,7 @@ runs:
     - name: Run standup_cluster plan
       shell: bash
       env:
-        STREAM: ${{ (inputs.debug && '--stream --no-verbose') || '' }}
+        STREAM: ${{ ((inputs.debug == 'true') && '--stream --no-verbose') || '' }}
       working-directory: kvm_automation_tooling
       run: |-
         bundle exec bolt plan run kvm_automation_tooling::standup_cluster --params @standup_cluster_params.json ${STREAM}
