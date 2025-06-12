@@ -99,6 +99,14 @@ inputs:
   debug:
     description: 'Enable debug output (adds --stream to bolt commands).'
     default: false
+  checkout:
+    description: |-
+      Checkout the kvm_automation_tooling module from GitHub.
+
+      This can be set to false to instead use the
+      kvm_automation_tooling/ checkout provided by the calling
+      workflow.
+    default: true
 
 outputs:
   cluster-details:
@@ -113,10 +121,11 @@ runs:
   using: "composite"
   steps:
     - name: Checkout kvm_automation_tooling module
+      if: ${{ inputs.checkout == 'true' }}
       uses: actions/checkout@v4
       with:
         repository: 'jpartlow/kvm_automation_tooling'
-        ref: 'v1'
+        ref: 'v2'
         path: 'kvm_automation_tooling'
     - name: Install Terraform
       shell: bash
@@ -190,17 +199,24 @@ runs:
           "vms": ${VMS},
           "install_openvox": ${INSTALL_OPENVOX},
           "install_openvox_params": {
-            "openvox_collection": "${OPENVOX_COLLECTION}",
-            "openvox_version": "${OPENVOX_VERSION}",
-            "openvox_released": ${OPENVOX_RELEASED},
-            "openvox_artifacts_url": "${OPENVOX_ARTIFACTS_URL}"
+            "openvox_agent_params": {
+              "openvox_collection": "${OPENVOX_COLLECTION}",
+              "openvox_version": "${OPENVOX_VERSION}",
+              "openvox_released": ${OPENVOX_RELEASED},
+              "openvox_artifacts_url": "${OPENVOX_ARTIFACTS_URL}"
+            },
+            "install_defaults": {
+              "openvox_version": "latest",
+              "openvox_collection": "${OPENVOX_COLLECTION}",
+              "openvox_released": true
+            }
           }
         }
         EOF
     - name: Run standup_cluster plan
       shell: bash
       env:
-        STREAM: ${{ (inputs.debug && '--stream --no-verbose') || '' }}
+        STREAM: ${{ ((inputs.debug == 'true') && '--stream --no-verbose') || '' }}
       working-directory: kvm_automation_tooling
       run: |-
         bundle exec bolt plan run kvm_automation_tooling::standup_cluster --params @standup_cluster_params.json ${STREAM}
