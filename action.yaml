@@ -99,6 +99,14 @@ inputs:
   debug:
     description: 'Enable debug output (adds --stream to bolt commands).'
     default: false
+  checkout:
+    description: |-
+      Checkout the kvm_automation_tooling module from GitHub.
+
+      This can be set to false to instead use the
+      kvm_automation_tooling/ checkout provided by the calling
+      workflow.
+    default: true
 
 outputs:
   cluster-details:
@@ -113,6 +121,7 @@ runs:
   using: "composite"
   steps:
     - name: Checkout kvm_automation_tooling module
+      if: ${{ inputs.checkout == 'true' }}
       uses: actions/checkout@v4
       with:
         repository: 'jpartlow/kvm_automation_tooling'
