@@ -13,7 +13,7 @@ Ubuntu 24.04
 ## Supported VM Platforms
 
 The action can created nested vms for any OS supported by
-[kvm_automation_tooling] which currently (1.0.0) includes:
+[kvm_automation_tooling] which currently (v2) includes:
 
 * Almalinux 9, 8
 * Debian 13, 12, 11, 10
