@@ -55,6 +55,11 @@ jobs:
                 "cpu_mode": "host-model"
               }
             ]
+      - name: Verify runner is resolvable
+        shell: bash
+        run: |-
+          host test-runner-1.vm
+          host test-testee-1.vm
 
   install-openvox-collection:
     runs-on: ubuntu-latest

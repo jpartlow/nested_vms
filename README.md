@@ -38,10 +38,10 @@ parameters.
     os-arch: x86_64
 ```
 
-By default this will generate a single nested VM with a hostname
-'test-agent-1' that can be reached via SSH on the runner using the key
-"${HOME}/.ssh/ssh-id-test.pub" (where $HOME is the home directory of
-the runner user on the gha runner vm).
+By default this will generate a single nested VM with an fqdn of
+'test-agent-1.vm' that can be reached via SSH on the runner using the
+key "${HOME}/.ssh/ssh-id-test.pub" (where $HOME is the home directory
+of the runner user on the gha runner vm).
 
 ## License
 

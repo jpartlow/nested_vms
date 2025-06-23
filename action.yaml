@@ -107,6 +107,12 @@ inputs:
       kvm_automation_tooling/ checkout provided by the calling
       workflow.
     default: true
+  network_prefix:
+    description: |-
+      The first three octects of the network address range to use for
+      the generated libvirt network. The actual range in CIDR notation
+      will be 'A.B.C.0/24'. The gateway address will be 'A.B.C.1'.
+    default: "192.168.100"
 
 outputs:
   cluster-details:
@@ -181,12 +187,13 @@ runs:
         OPENVOX_VERSION: ${{ inputs.openvox-version || 'latest' }}
         OPENVOX_RELEASED: ${{ inputs.openvox-released }}
         OPENVOX_ARTIFACTS_URL: ${{ inputs.openvox-artifacts-url }}
+        NETWORK_ADDRESSES: ${{ format('{0}.0/24', inputs.network_prefix) }}
       working-directory: kvm_automation_tooling
       run: |-
         cat > standup_cluster_params.json <<EOF
         {
           "cluster_id": "test",
-          "network_addresses": "192.168.100.0/24",
+          "network_addresses": "${NETWORK_ADDRESSES}",
           "ssh_public_key_path": "${HOME}/.ssh/ssh-id-test.pub",
           "setup_cluster_ssh": ${SETUP_CLUSTER_SSH},
           "setup_cluster_root_ssh": ${SETUP_CLUSTER_ROOT_SSH},
@@ -220,6 +227,27 @@ runs:
       working-directory: kvm_automation_tooling
       run: |-
         bundle exec bolt plan run kvm_automation_tooling::standup_cluster --params @standup_cluster_params.json ${STREAM}
+    # This will allow the runner to resolve guest fqdn like
+    # 'test-agent-1.vm'. The actual hostnames depend on the inputs.vms
+    # roles. See kvm_automation_tooling for details.
+    - name: Add resolver for cluster vm domain
+      shell: bash
+      env:
+        CLUSTER_RESOLVED_CONF: ${{ format('{0}-cluster-domain.conf', inputs.cluster_id) }}
+        GATEWAY_IP: ${{ format('{0}.1', inputs.network_prefix) }}
+      run: |-
+        resolved_conf="/etc/systemd/resolved.conf.d/${CLUSTER_RESOLVED_CONF}"
+        sudo mkdir -p /etc/systemd/resolved.conf.d
+        sudo touch "${resolved_conf}"
+        sudo chmod 644 "${resolved_conf}"
+        sudo chown "${USER}:${USER}" "${resolved_conf}"
+        cat > "${resolved_conf}" <<EOF
+        [Resolve]
+        DNS=${GATEWAY_IP}
+        Domains=~vm
+        EOF
+        cat "${resolved_conf}"
+        sudo systemctl restart systemd-resolved
     - name: Collect inventory details
       id: inventory-details
       shell: bash
