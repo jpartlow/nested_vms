@@ -119,6 +119,10 @@ inputs:
       the generated libvirt network. The actual range in CIDR notation
       will be 'A.B.C.0/24'. The gateway address will be 'A.B.C.1'.
     default: "192.168.100"
+  domain_name:
+    description: |-
+      The domain name for the guest cluster.
+    default: vm
 
 outputs:
   cluster-details:
@@ -195,12 +199,14 @@ runs:
         OPENVOX_ARTIFACTS_URL: ${{ inputs.openvox-artifacts-url }}
         CLUSTER_ID: ${{ inputs.cluster_id }}
         NETWORK_ADDRESSES: ${{ format('{0}.0/24', inputs.network_prefix) }}
+        DOMAIN_NAME: ${{ inputs.domain_name }}
       working-directory: kvm_automation_tooling
       run: |-
         cat > standup_cluster_params.json <<EOF
         {
           "cluster_id": "${CLUSTER_ID}",
           "network_addresses": "${NETWORK_ADDRESSES}",
+          "domain_name": "${DOMAIN_NAME}",
           "ssh_public_key_path": "${HOME}/.ssh/ssh-id-test.pub",
           "setup_cluster_ssh": ${SETUP_CLUSTER_SSH},
           "setup_cluster_root_ssh": ${SETUP_CLUSTER_ROOT_SSH},
@@ -238,11 +244,12 @@ runs:
     # 'test-agent-1.vm'. The actual hostnames depend on the
     # inputs.cluster_id and inputs.vms roles. See
     # kvm_automation_tooling for details.
-    - name: Add resolver for cluster vm domain
+    - name: Add resolver for cluster domain
       shell: bash
       env:
         CLUSTER_RESOLVED_CONF: ${{ format('{0}-cluster-domain.conf', inputs.cluster_id) }}
         GATEWAY_IP: ${{ format('{0}.1', inputs.network_prefix) }}
+        DOMAIN_NAME: ${{ inputs.domain_name }}
       run: |-
         resolved_conf="/etc/systemd/resolved.conf.d/${CLUSTER_RESOLVED_CONF}"
         sudo mkdir -p /etc/systemd/resolved.conf.d
@@ -252,7 +259,7 @@ runs:
         cat > "${resolved_conf}" <<EOF
         [Resolve]
         DNS=${GATEWAY_IP}
-        Domains=~vm
+        Domains=~${DOMAIN_NAME}
         EOF
         cat "${resolved_conf}"
         sudo systemctl restart systemd-resolved
