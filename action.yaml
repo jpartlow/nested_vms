@@ -123,6 +123,12 @@ inputs:
     description: |-
       The domain name for the guest cluster.
     default: vm
+  ssh_key_name:
+    description: |-
+      The name of the SSH key to use for ssh access to cluster vms. If
+      the file ~/.ssh/<ssh_key_name> does not exist, it will be
+      generated as an ed25519 key.
+    default: ssh-id-test
 
 outputs:
   cluster-details:
@@ -179,7 +185,16 @@ runs:
       run: bundle exec bolt module install
     - name: Generate an SSH key to use for the cluster
       shell: bash
-      run: ssh-keygen -t ed25519 -f "${HOME}/.ssh/ssh-id-test" -N '' -q
+      env:
+        SSH_KEY_NAME: ${{ inputs.ssh_key_name }}
+      run: |-
+        if [ ! -f "${HOME}/.ssh/${SSH_KEY_NAME}" ]; then
+          echo "Generating SSH key ${SSH_KEY_NAME} in ${HOME}/.ssh"
+          ssh-keygen -t ed25519 -f "${HOME}/.ssh/${SSH_KEY_NAME}" -N '' -q
+        else
+          echo "Using existing SSH key ${SSH_KEY_NAME} in ${HOME}/.ssh"
+          cat "${HOME}/.ssh/${SSH_KEY_NAME}.pub"
+        fi
     - name: Write standup_cluster params
       shell: bash
       env:
@@ -200,6 +215,7 @@ runs:
         CLUSTER_ID: ${{ inputs.cluster_id }}
         NETWORK_ADDRESSES: ${{ format('{0}.0/24', inputs.network_prefix) }}
         DOMAIN_NAME: ${{ inputs.domain_name }}
+        SSH_KEY_NAME: ${{ inputs.ssh_key_name }}
       working-directory: kvm_automation_tooling
       run: |-
         cat > standup_cluster_params.json <<EOF
@@ -207,7 +223,7 @@ runs:
           "cluster_id": "${CLUSTER_ID}",
           "network_addresses": "${NETWORK_ADDRESSES}",
           "domain_name": "${DOMAIN_NAME}",
-          "ssh_public_key_path": "${HOME}/.ssh/ssh-id-test.pub",
+          "ssh_public_key_path": "${HOME}/.ssh/${SSH_KEY_NAME}.pub",
           "setup_cluster_ssh": ${SETUP_CLUSTER_SSH},
           "setup_cluster_root_ssh": ${SETUP_CLUSTER_ROOT_SSH},
           "host_root_access": ${HOST_ROOT_ACCESS},
