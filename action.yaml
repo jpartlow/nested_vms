@@ -107,6 +107,12 @@ inputs:
       kvm_automation_tooling/ checkout provided by the calling
       workflow.
     default: true
+  cluster_id:
+    description: |-
+      The cluster ID to use for the generated VMs. This is used to
+      distinguish the VM hostnames, Terraform domains, Bolt inventory
+      and Terraform state files.
+    default: test
   network_prefix:
     description: |-
       The first three octects of the network address range to use for
@@ -187,12 +193,13 @@ runs:
         OPENVOX_VERSION: ${{ inputs.openvox-version || 'latest' }}
         OPENVOX_RELEASED: ${{ inputs.openvox-released }}
         OPENVOX_ARTIFACTS_URL: ${{ inputs.openvox-artifacts-url }}
+        CLUSTER_ID: ${{ inputs.cluster_id }}
         NETWORK_ADDRESSES: ${{ format('{0}.0/24', inputs.network_prefix) }}
       working-directory: kvm_automation_tooling
       run: |-
         cat > standup_cluster_params.json <<EOF
         {
-          "cluster_id": "test",
+          "cluster_id": "${CLUSTER_ID}",
           "network_addresses": "${NETWORK_ADDRESSES}",
           "ssh_public_key_path": "${HOME}/.ssh/ssh-id-test.pub",
           "setup_cluster_ssh": ${SETUP_CLUSTER_SSH},
@@ -228,8 +235,9 @@ runs:
       run: |-
         bundle exec bolt plan run kvm_automation_tooling::standup_cluster --params @standup_cluster_params.json ${STREAM}
     # This will allow the runner to resolve guest fqdn like
-    # 'test-agent-1.vm'. The actual hostnames depend on the inputs.vms
-    # roles. See kvm_automation_tooling for details.
+    # 'test-agent-1.vm'. The actual hostnames depend on the
+    # inputs.cluster_id and inputs.vms roles. See
+    # kvm_automation_tooling for details.
     - name: Add resolver for cluster vm domain
       shell: bash
       env:
@@ -251,7 +259,9 @@ runs:
     - name: Collect inventory details
       id: inventory-details
       shell: bash
+      env:
+        CLUSTER_ID: ${{ inputs.cluster_id }}
       working-directory: kvm_automation_tooling
       run: |-
-        bundle exec bolt inventory show --inventory terraform/instances/inventory.test.yaml --format json --detail | tee inventory.json
+        bundle exec bolt inventory show --inventory terraform/instances/inventory.${CLUSTER_ID}.yaml --format json --detail | tee inventory.json
         echo "inventory_json=$(cat inventory.json)" >> $GITHUB_OUTPUT
