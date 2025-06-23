@@ -61,6 +61,38 @@ jobs:
           host test-runner-1.vm
           host test-testee-1.vm
 
+  validate-cluster-network-settings:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os:
+          - ['almalinux', '9', 'x86_64']
+          - ['ubuntu', '24.04', 'x86_64']
+    steps:
+      - uses: actions/checkout@v4
+      - id: local-action
+        uses: ./
+        with:
+          os: ${{ matrix.os[0] }}
+          os-version: ${{ matrix.os[1] }}
+          os-arch: ${{ matrix.os[2] }}
+          image_version: ${{ matrix.os[3] }}
+          debug: true
+          cluster_id: other
+          network_prefix: 192.168.222
+          domain_name: vm2
+          vms: |-
+            [
+              {
+                "role": "agent",
+                "cpu_mode": "host-model"
+              }
+            ]
+      - name: Verify runner is resolvable
+        shell: bash
+        run: |-
+          host other-agent-1.vm2 | grep '192.168.222.'
+
   install-openvox-collection:
     runs-on: ubuntu-latest
     strategy:
