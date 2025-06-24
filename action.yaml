@@ -107,6 +107,28 @@ inputs:
       kvm_automation_tooling/ checkout provided by the calling
       workflow.
     default: true
+  cluster_id:
+    description: |-
+      The cluster ID to use for the generated VMs. This is used to
+      distinguish the VM hostnames, Terraform domains, Bolt inventory
+      and Terraform state files.
+    default: test
+  network_prefix:
+    description: |-
+      The first three octects of the network address range to use for
+      the generated libvirt network. The actual range in CIDR notation
+      will be 'A.B.C.0/24'. The gateway address will be 'A.B.C.1'.
+    default: "192.168.100"
+  domain_name:
+    description: |-
+      The domain name for the guest cluster.
+    default: vm
+  ssh_key_name:
+    description: |-
+      The name of the SSH key to use for ssh access to cluster vms. If
+      the file ~/.ssh/<ssh_key_name> does not exist, it will be
+      generated as an ed25519 key.
+    default: ssh-id-test
 
 outputs:
   cluster-details:
@@ -163,7 +185,16 @@ runs:
       run: bundle exec bolt module install
     - name: Generate an SSH key to use for the cluster
       shell: bash
-      run: ssh-keygen -t ed25519 -f "${HOME}/.ssh/ssh-id-test" -N '' -q
+      env:
+        SSH_KEY_NAME: ${{ inputs.ssh_key_name }}
+      run: |-
+        if [ ! -f "${HOME}/.ssh/${SSH_KEY_NAME}" ]; then
+          echo "Generating SSH key ${SSH_KEY_NAME} in ${HOME}/.ssh"
+          ssh-keygen -t ed25519 -f "${HOME}/.ssh/${SSH_KEY_NAME}" -N '' -q
+        else
+          echo "Using existing SSH key ${SSH_KEY_NAME} in ${HOME}/.ssh"
+          cat "${HOME}/.ssh/${SSH_KEY_NAME}.pub"
+        fi
     - name: Write standup_cluster params
       shell: bash
       env:
@@ -181,13 +212,18 @@ runs:
         OPENVOX_VERSION: ${{ inputs.openvox-version || 'latest' }}
         OPENVOX_RELEASED: ${{ inputs.openvox-released }}
         OPENVOX_ARTIFACTS_URL: ${{ inputs.openvox-artifacts-url }}
+        CLUSTER_ID: ${{ inputs.cluster_id }}
+        NETWORK_ADDRESSES: ${{ format('{0}.0/24', inputs.network_prefix) }}
+        DOMAIN_NAME: ${{ inputs.domain_name }}
+        SSH_KEY_NAME: ${{ inputs.ssh_key_name }}
       working-directory: kvm_automation_tooling
       run: |-
         cat > standup_cluster_params.json <<EOF
         {
-          "cluster_id": "test",
-          "network_addresses": "192.168.100.0/24",
-          "ssh_public_key_path": "${HOME}/.ssh/ssh-id-test.pub",
+          "cluster_id": "${CLUSTER_ID}",
+          "network_addresses": "${NETWORK_ADDRESSES}",
+          "domain_name": "${DOMAIN_NAME}",
+          "ssh_public_key_path": "${HOME}/.ssh/${SSH_KEY_NAME}.pub",
           "setup_cluster_ssh": ${SETUP_CLUSTER_SSH},
           "setup_cluster_root_ssh": ${SETUP_CLUSTER_ROOT_SSH},
           "host_root_access": ${HOST_ROOT_ACCESS},
@@ -213,6 +249,7 @@ runs:
           }
         }
         EOF
+        cat standup_cluster_params.json
     - name: Run standup_cluster plan
       shell: bash
       env:
@@ -220,10 +257,35 @@ runs:
       working-directory: kvm_automation_tooling
       run: |-
         bundle exec bolt plan run kvm_automation_tooling::standup_cluster --params @standup_cluster_params.json ${STREAM}
+    # This will allow the runner to resolve guest fqdn like
+    # 'test-agent-1.vm'. The actual hostnames depend on the
+    # inputs.cluster_id and inputs.vms roles. See
+    # kvm_automation_tooling for details.
+    - name: Add resolver for cluster domain
+      shell: bash
+      env:
+        CLUSTER_RESOLVED_CONF: ${{ format('{0}-cluster-domain.conf', inputs.cluster_id) }}
+        GATEWAY_IP: ${{ format('{0}.1', inputs.network_prefix) }}
+        DOMAIN_NAME: ${{ inputs.domain_name }}
+      run: |-
+        resolved_conf="/etc/systemd/resolved.conf.d/${CLUSTER_RESOLVED_CONF}"
+        sudo mkdir -p /etc/systemd/resolved.conf.d
+        sudo touch "${resolved_conf}"
+        sudo chmod 644 "${resolved_conf}"
+        sudo chown "${USER}:${USER}" "${resolved_conf}"
+        cat > "${resolved_conf}" <<EOF
+        [Resolve]
+        DNS=${GATEWAY_IP}
+        Domains=~${DOMAIN_NAME}
+        EOF
+        cat "${resolved_conf}"
+        sudo systemctl restart systemd-resolved
     - name: Collect inventory details
       id: inventory-details
       shell: bash
+      env:
+        CLUSTER_ID: ${{ inputs.cluster_id }}
       working-directory: kvm_automation_tooling
       run: |-
-        bundle exec bolt inventory show --inventory terraform/instances/inventory.test.yaml --format json --detail | tee inventory.json
+        bundle exec bolt inventory show --inventory terraform/instances/inventory.${CLUSTER_ID}.yaml --format json --detail | tee inventory.json
         echo "inventory_json=$(cat inventory.json)" >> $GITHUB_OUTPUT
