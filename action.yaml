@@ -249,6 +249,7 @@ runs:
           }
         }
         EOF
+        cat standup_cluster_params.json
     - name: Run standup_cluster plan
       shell: bash
       env:
