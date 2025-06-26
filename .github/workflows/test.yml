@@ -148,7 +148,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - id: local-action
-        uses: ./ # Use kvm_automation_tooling's own standup-cluster action.yaml...
+        uses: ./
         with:
           os: ${{ matrix.os[0] }}
           os-version: ${{ matrix.os[1] }}
@@ -193,7 +193,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - id: local-action
-        uses: ./ # Use kvm_automation_tooling's own standup-cluster action.yaml...
+        uses: ./
         with:
           os: ${{ matrix.os[0] }}
           os-version: ${{ matrix.os[1] }}
