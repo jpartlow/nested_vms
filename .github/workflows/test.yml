@@ -32,7 +32,7 @@ jobs:
           - ['ubuntu', '22.04', 'x86_64']
           - ['ubuntu', '24.04', 'x86_64']
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - id: local-action
         uses: ./
         with:
@@ -68,7 +68,7 @@ jobs:
           - ['almalinux', '9', 'x86_64']
           - ['ubuntu', '24.04', 'x86_64']
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - id: local-action
         uses: ./
         with:
@@ -100,7 +100,7 @@ jobs:
           - ['rocky', '9', 'x86_64']
           - ['ubuntu', '2404', 'amd64']
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - id: local-action
         uses: ./
         with:
@@ -145,7 +145,7 @@ jobs:
           - ['rocky', '9', 'x86_64']
           - ['ubuntu', '2404', 'amd64']
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - id: local-action
         uses: ./
         with:
@@ -190,7 +190,7 @@ jobs:
           - ['rocky', '9', 'x86_64']
           - ['ubuntu', '2404', 'amd64']
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - id: local-action
         uses: ./
         with:

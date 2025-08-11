@@ -144,7 +144,7 @@ runs:
   steps:
     - name: Checkout kvm_automation_tooling module
       if: ${{ inputs.checkout == 'true' }}
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
       with:
         repository: 'jpartlow/kvm_automation_tooling'
         ref: 'v2'
