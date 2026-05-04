@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.3.0 (2026-05-04)
+
+* Bump actions/checkout dependency to v6.
+* Add Alma/Rocky el10 variants to test matrix.
+* Drop Debian 10 (eol) from test matrix.
+
 ## 1.2.0 (2025-07-08)
 
 * Clean up outdated comments in test workflow
