@@ -2,9 +2,10 @@
 
 On an ubuntu test runner, this action will install and prepare [libvirt]
 for nested virtualization and then stand up a cluster of vms for
-testing using [Bolt] and [Terraform].
+testing using [OpenBolt] and [Terraform].
 
-The Bolt module [kvm_automation_tooling] is used to provision the VMs.
+The OpenBolt module [kvm_automation_tooling] is used to provision the
+VMs.
 
 ## Supported Platforms
 
@@ -18,7 +19,26 @@ The action can created nested vms for any OS supported by
 * Almalinux 10, 9, 8
 * Debian 13, 12, 11
 * Rocky 10, 9, 8
-* Ubuntu 24.04, 22.04, 20.04, 18.04
+* Ubuntu 26.04, 24.04, 22.04
+
+## Supported Architectures
+
+Supports x86_64 and aarch64 architectures for the nested VMs as of
+[kvm_automation_tooling] 2.8.0.
+
+Note that the runner vm must still be x86_64, since the standard
+ubuntu-24.04-arm runner does not support kvm (until such a time as
+https://github.com/actions/runner-images/issues/14062 is resolved).
+
+This also means, that while you can create aarch64 nested VMs, they
+will be emulated using qemu and thus much slower than the x86_64
+nested VMs. (5-20 times slower depending on the os, where alma, rocky,
+debian seemed to be on the faster end of the spectrum and ubuntu on
+the slower end, with ubuntu 26.04 the slowest...).
+
+When using aarch64 nested VMs, it is recommended to provide a minimum
+vm spec with "cpus" 2 and "mem_mb" 4096 to ensure the nested VMs have
+enough resources to run.
 
 ## Usage
 
@@ -62,5 +82,5 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 [kvm_automation_tooling]: https://github.com/jpartlow/kvm_automation_tooling
 [libvirt]: https://libvirt.org/
-[Bolt]: https://www.puppet.com/docs/bolt/latest/bolt.html
+[OpenBolt]: https://github.com/OpenVoxProject/openbolt
 [Terraform]: https://developer.hashicorp.com/terraform

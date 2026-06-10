@@ -37,7 +37,7 @@ inputs:
   ruby-version:
     description: 'Ruby version to install for the action.'
     required: true
-    default: '3.3'
+    default: '3.4'
   vms:
     description: |-
       JSON array of VM definitions as defined by the
@@ -129,6 +129,33 @@ inputs:
       the file ~/.ssh/<ssh_key_name> does not exist, it will be
       generated as an ed25519 key.
     default: ssh-id-test
+  refresh_package_cache:
+    description: |-
+      Whether or not to refresh the package cache on the generated VMs
+      as part of the cluster setup. For debian based images in
+      particular, running without an apt update has been observed to
+      cause package installation failures due to stale package lists.
+    default: true
+  upgrade_packages:
+    description: |-
+      Whether or not to perform a full package upgrade on the vms.
+      This add significant time and is not done by default. NOTE:
+      setting this true imples refresh_package_cache, regardless of
+      the value of that parameter.
+    default: false
+  wait_for_ip_timeout:
+    description: |-
+      The amount of time, in seconds, to wait for the generated VMs to
+      have an IP address before timing out. This is calculated
+      automatically based on whether kvm or qemu is being used (qemu
+      requires a longer timeout), but can be overridden with this
+      parameter if needed.
+  wait_until_available_timeout:
+    description: |-
+      The amount of time, in seconds, to wait for the generated VMs to
+      be available for SSH connections before timing out. This
+      defaults to wait_for_ip_timeout (either provided or calculated
+      internally), but can be overridden if needed.
 
 outputs:
   cluster-details:
@@ -157,19 +184,31 @@ runs:
           sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
         echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | \
           sudo tee /etc/apt/sources.list.d/hashicorp.list
-        sudo apt update && sudo apt install terraform
+        sudo apt-get update && sudo apt-get install -y terraform
     - name: Install Libvirt
       shell: bash
       run: |-
-        sudo apt install libvirt-daemon-system libvirt-dev genisoimage
+        packages=(
+          libvirt-daemon-system
+          libvirt-dev
+          genisoimage
+          # In case we have arm guests...
+          qemu-system-arm
+          qemu-efi-aarch64
+          # Needed to provide virt-customize for the edge case of
+          # ubuntu 26.04 arm images in GHA, which need an increased
+          # systemd device timeout.
+          guestfs-tools
+        )
+        sudo apt-get install -y "${packages[@]}"
         # Even if we add the runner user to the libvirt group, we can't
         # restart the session to take advantage of that, and using
         # something like newgrp requests a password, while su -l also
         # fails to provide a shell with the new group membership. So I'm
         # just opening up permissions instead.
         sudo chmod o+rw /var/run/libvirt/libvirt-sock
-        # Turn off the qemu security driver to avoid SELinux issues reading
-        # the base image file.
+        # Turn off the qemu security driver to avoid SELinux issues
+        # reading the base image file.
         sudo sed -i -e 's/^#security_driver =.*$/security_driver = "none"/' '/etc/libvirt/qemu.conf'
         sudo systemctl restart libvirtd
         # Create the default directory storage pool.
