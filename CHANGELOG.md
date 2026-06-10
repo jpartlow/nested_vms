@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.0 (2026-06-10)
+
+* Provide for arm64 vms using kvm_automation_tooling 2.8
+* (maint) Bump to using Ruby 3.4
+
 ## 1.3.0 (2026-05-04)
 
 * Bump actions/checkout dependency to v6.
