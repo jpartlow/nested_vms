@@ -18,44 +18,71 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
+        arch:
+          - x86_64
+          - aarch64
         os:
-          - ['almalinux', '8', 'x86_64']
-          - ['almalinux', '9', 'x86_64']
-          - ['almalinux', '10', 'x86_64']
-          - ['debian', '11', 'x86_64']
-          - ['debian', '12', 'x86_64']
-          # debian 13 is not released yet, but we can get dailies..
-          - ['debian', '13', 'x86_64', 'daily-latest']
-          - ['rocky', '8', 'x86_64']
-          - ['rocky', '9', 'x86_64']
-          - ['rocky', '10', 'x86_64']
-          - ['ubuntu', '18.04', 'x86_64']
-          - ['ubuntu', '20.04', 'x86_64']
-          - ['ubuntu', '22.04', 'x86_64']
-          - ['ubuntu', '24.04', 'x86_64']
+          - ['almalinux', '8']
+          - ['almalinux', '9']
+          - ['almalinux', '10']
+          - ['debian', '11']
+          - ['debian', '12']
+          - ['debian', '13']
+          - ['rocky', '8']
+          - ['rocky', '9']
+          - ['rocky', '10']
+          - ['ubuntu', '22.04']
+          - ['ubuntu', '24.04']
+          - ['ubuntu', '26.04']
     steps:
       - uses: actions/checkout@v6
+      - id: vm-spec
+        name: Determine VM spec from architecture
+        env:
+          ARCH: ${{ matrix.arch }}
+        run: |-
+          if [[ "${ARCH}" == "x86_64" ]]; then
+            vm_spec='[
+              {
+                "role": "runner",
+                "cpus": 2,
+                "mem_mb": 2048
+              },
+              {
+                "role": "testee"
+              }
+            ]'
+          elif [[ "${ARCH}" == "aarch64" ]]; then
+            vm_spec='[
+              {
+                "role": "runner",
+                "cpus": 2,
+                "mem_mb": 4096
+              },
+              {
+                "role": "testee",
+                "cpus": 2,
+                "mem_mb": 4096
+              }
+            ]'
+          else
+            echo "Unsupported architecture: ${ARCH}"
+            exit 1
+          fi
+          {
+            echo 'vm_spec<<EOS'
+            echo "${vm_spec}"
+            echo 'EOS'
+          } >> $GITHUB_OUTPUT
       - id: local-action
         uses: ./
         with:
           os: ${{ matrix.os[0] }}
           os-version: ${{ matrix.os[1] }}
-          os-arch: ${{ matrix.os[2] }}
-          image_version: ${{ matrix.os[3] }}
+          os-arch: ${{ matrix.arch }}
+          image_version: ${{ matrix.os[2] }}
           debug: true
-          vms: |-
-            [
-              {
-                "role": "runner",
-                "cpus": 2,
-                "mem_mb": 2048,
-                "cpu_mode": "host-model"
-              },
-              {
-                "role": "testee",
-                "cpu_mode": "host-model"
-              }
-            ]
+          vms: ${{ steps.vm-spec.outputs.vm_spec }}
       - name: Verify runner is resolvable
         shell: bash
         run: |-
@@ -85,8 +112,7 @@ jobs:
           vms: |-
             [
               {
-                "role": "agent",
-                "cpu_mode": "host-model"
+                "role": "agent"
               }
             ]
       - name: Verify runner is resolvable
@@ -118,8 +144,7 @@ jobs:
               {
                 "role": "agent",
                 "cpus": 2,
-                "mem_mb": 2048,
-                "cpu_mode": "host-model"
+                "mem_mb": 2048
               }
             ]
       - name: Verify openvox-agent is installed
@@ -139,6 +164,7 @@ jobs:
           echo "ver: ${ver}"
           set -ex
           [[ "${ver}" =~ \"7\. ]]
+
   install-openvox-version:
     runs-on: ubuntu-latest
     strategy:
@@ -163,8 +189,7 @@ jobs:
               {
                 "role": "agent",
                 "cpus": 2,
-                "mem_mb": 2048,
-                "cpu_mode": "host-model"
+                "mem_mb": 2048
               }
             ]
       - name: Verify openvox-agent is installed
@@ -184,6 +209,7 @@ jobs:
           echo "ver: ${ver}"
           set -ex
           [[ "${ver}" =~ \"8\.13\.0 ]]
+
   install-openvox-pre-release:
     runs-on: ubuntu-latest
     strategy:
@@ -209,8 +235,7 @@ jobs:
               {
                 "role": "agent",
                 "cpus": 2,
-                "mem_mb": 2048,
-                "cpu_mode": "host-model"
+                "mem_mb": 2048
               }
             ]
       - name: Verify openvox-agent is installed
