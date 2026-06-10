@@ -37,7 +37,7 @@ inputs:
   ruby-version:
     description: 'Ruby version to install for the action.'
     required: true
-    default: '3.3'
+    default: '3.4'
   vms:
     description: |-
       JSON array of VM definitions as defined by the
