@@ -107,6 +107,9 @@ inputs:
       kvm_automation_tooling/ checkout provided by the calling
       workflow.
     default: true
+  kat_ref:
+    description: Branch, tag or sha of kvm_automation_tooling to checkout.
+    default: 'v2'
   cluster_id:
     description: |-
       The cluster ID to use for the generated VMs. This is used to
@@ -174,7 +177,7 @@ runs:
       uses: actions/checkout@v6
       with:
         repository: 'jpartlow/kvm_automation_tooling'
-        ref: 'v2'
+        ref: ${{ inputs.kat_ref }}
         path: 'kvm_automation_tooling'
     - name: Install Terraform
       shell: bash
