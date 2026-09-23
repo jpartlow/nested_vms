@@ -329,5 +329,6 @@ runs:
         CLUSTER_ID: ${{ inputs.cluster_id }}
       working-directory: kvm_automation_tooling
       run: |-
-        bundle exec bolt inventory show --inventory terraform/instances/inventory.${CLUSTER_ID}.yaml --format json --detail | tee inventory.json
+        bundle exec bolt inventory show --inventory terraform/instances/inventory.${CLUSTER_ID}.yaml --format json --detail > inventory.json
+        jq . inventory.json
         echo "inventory_json=$(cat inventory.json)" >> $GITHUB_OUTPUT
