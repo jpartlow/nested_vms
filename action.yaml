@@ -201,6 +201,13 @@ runs:
           guestfs-tools
         )
         sudo apt-get install -y "${packages[@]}"
+        # Pin the arm guest firmware to the Ubuntu 24.04 build, whatever
+        # the runner release. Newer builds enforce NX, and EL 8, Debian 12
+        # and Ubuntu 22.04 arm guests don't boot on them.
+        firmware_deb='qemu-efi-aarch64_2024.02-2ubuntu0.10_all.deb'
+        wget -nv -O "${RUNNER_TEMP}/${firmware_deb}" "https://launchpad.net/ubuntu/+archive/primary/+files/${firmware_deb}"
+        echo "fad8e80e929cd00dae8c5c8e5dd3ec85f37d9a832eea776957e5e2cf86ef2ab5  ${RUNNER_TEMP}/${firmware_deb}" | sha256sum --check
+        sudo dpkg --install "${RUNNER_TEMP}/${firmware_deb}"
         # Even if we add the runner user to the libvirt group, we can't
         # restart the session to take advantage of that, and using
         # something like newgrp requests a password, while su -l also
