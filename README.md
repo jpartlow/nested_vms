@@ -28,7 +28,8 @@ Supports x86_64 and aarch64 architectures for the nested VMs as of
 
 Note that the runner vm must still be x86_64, since the standard
 ubuntu-24.04-arm runner does not support kvm (until such a time as
-https://github.com/actions/runner-images/issues/14062 is resolved).
+actions/runner-images#14062/[community-discussion-160591]
+is resolved).
 
 This also means, that while you can create aarch64 nested VMs, they
 will be emulated using qemu and thus much slower than the x86_64
@@ -84,3 +85,4 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 [libvirt]: https://libvirt.org/
 [OpenBolt]: https://github.com/OpenVoxProject/openbolt
 [Terraform]: https://developer.hashicorp.com/terraform
+[community-discussion-160591]: https://github.com/orgs/community/discussions/160591#discussioncomment-18092013
