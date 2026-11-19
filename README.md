@@ -17,7 +17,7 @@ The action can created nested vms for any OS supported by
 [kvm_automation_tooling] which currently (v2) includes:
 
 * Almalinux 10, 9, 8
-* Debian 13, 12, 11
+* Debian 13, 12
 * Rocky 10, 9, 8
 * Ubuntu 26.04, 24.04, 22.04
 
