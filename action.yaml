@@ -201,13 +201,6 @@ runs:
           guestfs-tools
         )
         sudo apt-get install -y "${packages[@]}"
-        # Pin the arm guest firmware to the Ubuntu 24.04 build, whatever
-        # the runner release. Newer builds enforce NX, and EL 8, Debian 12
-        # and Ubuntu 22.04 arm guests don't boot on them.
-        firmware_deb='qemu-efi-aarch64_2024.02-2ubuntu0.10_all.deb'
-        wget -nv -O "${RUNNER_TEMP}/${firmware_deb}" "https://launchpad.net/ubuntu/+archive/primary/+files/${firmware_deb}"
-        echo "fad8e80e929cd00dae8c5c8e5dd3ec85f37d9a832eea776957e5e2cf86ef2ab5  ${RUNNER_TEMP}/${firmware_deb}" | sha256sum --check
-        sudo dpkg --install "${RUNNER_TEMP}/${firmware_deb}"
         # Even if we add the runner user to the libvirt group, we can't
         # restart the session to take advantage of that, and using
         # something like newgrp requests a password, while su -l also
@@ -220,6 +213,92 @@ runs:
         sudo systemctl restart libvirtd
         # Create the default directory storage pool.
         sudo virsh pool-create-as --name default --type dir --target /var/lib/libvirt/images
+    # There are mismatches in the qemu-efi-aarch64 firmware that need
+    # to be addressed when running some arm guests on an amd host via
+    # qemu.
+    #
+    # On 24.04 runners: the default qemu-efi-aarch64 package
+    # doesn't have the newer Microsoft certs from 2025, and alma 9/10
+    # arm images fail, likely because they are only signed with the
+    # newer 2025 certs.
+    # For this case, we're installing 26.04's qemu-efi-aarch64 package.
+    #
+    # On 26.04 runners: older EL 8, Debian 12 and Ubuntu 22.04 arm
+    # guests halt during boot with Synchronous Exceptions early in
+    # UEFI loading or grub stage. This is likely due to these
+    # bootloaders failing to meet the stricter requirements of 26.04's
+    # qemu-efi-aarch64 EDK2 firmware (NX, No-eXecute requirements).
+    # For this case, we're installing 24.04's older qemu-efi-aarch64
+    # package.
+    - name: Adjust qemu-efi-aarch64 version
+      if: ${{ runner.arch == 'X64' }}
+      env:
+        IMAGE_OS: ${{ env.ImageOS }}
+        OS: ${{ inputs.os }}
+        OS_VERSION: ${{ inputs.os-version }}
+        OS_ARCH: ${{ inputs.os-arch }}
+        VMS: ${{ inputs.vms }}
+        # Key values are based on GHA ImageOS values.
+        RESTRICTIONS: |-
+          {
+            "ubuntu24": {
+              "platforms": [
+                "almalinux-9",
+                "almalinux-10"
+              ],
+              "firmware_ver": "2026.05-2ubuntu3",
+              "deb_sha": "698c5b3ace315a6df97f8e3300e98f2f8692395f0051c373c2b863c8c83fb701"
+            },
+            "ubuntu26": {
+              "platforms": [
+                "almalinux-8",
+                "debian-12",
+                "rocky-8",
+                "ubuntu-2204"
+              ],
+              "firmware_ver": "2024.02-2ubuntu0.10",
+              "deb_sha": "fad8e80e929cd00dae8c5c8e5dd3ec85f37d9a832eea776957e5e2cf86ef2ab5"
+            }
+          }
+      shell: bash
+      run: |-
+        set -ex
+        restriction=$(jq --arg os "${IMAGE_OS}" '.[$os] // empty' <<<"${RESTRICTIONS}")
+        # anything to do?
+        [[ -z "${restriction}" ]] && exit 0
+        echo "restriction: ${restriction}"
+
+        restricted_platforms=$(jq .platforms <<<"${restriction}")
+        firmware_ver=$(jq -r .firmware_ver <<<"${restriction}")
+        deb_sha=$(jq -r .deb_sha <<<"${restriction}")
+        default_os="{
+          \"name\": \"${OS}\",
+          \"version\": \"${OS_VERSION}\",
+          \"arch\": \"${OS_ARCH}\"
+        }"
+        guest_platforms=$(jq --argjson default_os "${default_os}" \
+          'map(.os // $default_os) | unique' <<<"${VMS}")
+        echo "guest_platforms: ${guest_platforms}"
+
+        any_restricted_guests=$(jq \
+          --argjson restricted "${restricted_platforms}" \
+          'any(.[];
+            . as $guest |
+            any($restricted[];
+              . as $r |
+              ($guest.name + "-" + $guest.version) == $r and
+                (($guest.arch == "arm64") or
+                 ($guest.arch == "aarch64"))
+            )
+          )' <<<"${guest_platforms}")
+
+        if [[ "${any_restricted_guests}" == 'true' ]]; then
+          firmware_deb="qemu-efi-aarch64_${firmware_ver}_all.deb"
+          deb_path="${RUNNER_TEMP}/${firmware_deb}"
+          wget -nv -O "${deb_path}" "https://launchpad.net/ubuntu/+archive/primary/+files/${firmware_deb}"
+          echo "${deb_sha} ${deb_path}" | sha256sum --check
+          sudo dpkg --install "${deb_path}"
+        fi
     - uses: ruby/setup-ruby@v1
       with:
         ruby-version: ${{ inputs.ruby-version }}
