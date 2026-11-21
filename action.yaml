@@ -227,7 +227,6 @@ runs:
     - name: Adjust qemu-efi-aarch64 version
       if: ${{ runner.arch == 'X64' }}
       env:
-        IMAGE_OS: ${{ env.ImageOS }}
         OS: ${{ inputs.os }}
         OS_VERSION: ${{ inputs.os-version }}
         OS_ARCH: ${{ inputs.os-arch }}
@@ -249,7 +248,7 @@ runs:
       shell: bash
       run: |-
         set -ex
-        restriction=$(jq --arg os "${IMAGE_OS}" '.[$os] // empty' <<<"${RESTRICTIONS}")
+        restriction=$(jq --arg os "${ImageOS}" '.[$os] // empty' <<<"${RESTRICTIONS}")
         # anything to do?
         [[ -z "${restriction}" ]] && exit 0
         echo "restriction: ${restriction}"
@@ -272,7 +271,7 @@ runs:
             . as $guest |
             any($restricted[];
               . as $r |
-              ($guest.name + "-" + $guest.version) == $r and
+              ($guest.name + "-" + ($guest.version | split(".") | join(""))) == $r and
                 (($guest.arch == "arm64") or
                  ($guest.arch == "aarch64"))
             )
