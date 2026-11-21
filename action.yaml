@@ -217,12 +217,6 @@ runs:
     # to be addressed when running some arm guests on an amd host via
     # qemu.
     #
-    # On 24.04 runners: the default qemu-efi-aarch64 package
-    # doesn't have the newer Microsoft certs from 2025, and alma 9/10
-    # arm images fail, likely because they are only signed with the
-    # newer 2025 certs.
-    # For this case, we're installing 26.04's qemu-efi-aarch64 package.
-    #
     # On 26.04 runners: older EL 8, Debian 12 and Ubuntu 22.04 arm
     # guests halt during boot with Synchronous Exceptions early in
     # UEFI loading or grub stage. This is likely due to these
@@ -241,14 +235,6 @@ runs:
         # Key values are based on GHA ImageOS values.
         RESTRICTIONS: |-
           {
-            "ubuntu24": {
-              "platforms": [
-                "almalinux-9",
-                "almalinux-10"
-              ],
-              "firmware_ver": "2026.05-2ubuntu3",
-              "deb_sha": "698c5b3ace315a6df97f8e3300e98f2f8692395f0051c373c2b863c8c83fb701"
-            },
             "ubuntu26": {
               "platforms": [
                 "almalinux-8",
